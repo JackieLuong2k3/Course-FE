@@ -18,9 +18,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (pathname === "/login" && isAuthed) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
+  // Đã đăng nhập vẫn cho vào /login (đổi tài khoản / xem form). Không redirect về /.
 
   return NextResponse.next();
 }

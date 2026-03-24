@@ -1,31 +1,38 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  AUTH_COOKIE,
+  AUTH_STORAGE_TOKEN,
+  AUTH_STORAGE_USER,
+  AUTH_USER_NAME_COOKIE,
+} from "@/lib/auth";
+
+function clearAuthCookies() {
+  const past = "max-age=0; path=/; SameSite=Lax";
+  document.cookie = `${AUTH_COOKIE}=; ${past}`;
+  document.cookie = `${AUTH_USER_NAME_COOKIE}=; ${past}`;
+}
 
 export function LogoutButton() {
   const router = useRouter();
-  const [pending, setPending] = useState(false);
 
-  async function handleLogout() {
-    setPending(true);
+  function handleLogout() {
+    clearAuthCookies();
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
-      router.push("/login");
-      router.refresh();
-    } finally {
-      setPending(false);
+      localStorage.removeItem(AUTH_STORAGE_TOKEN);
+      localStorage.removeItem(AUTH_STORAGE_USER);
+    } catch {
+      /* ignore */
     }
+    router.push("/");
+    router.refresh();
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleLogout}
-      disabled={pending}
-      className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-50 disabled:opacity-60 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
-    >
-      {pending ? "Đang xử lý…" : "Đăng xuất"}
-    </button>
+    <Button type="button" variant="outline" size="sm" onClick={handleLogout}>
+      Đăng xuất
+    </Button>
   );
 }

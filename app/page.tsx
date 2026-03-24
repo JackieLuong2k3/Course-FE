@@ -4,69 +4,59 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ChevronRight, Play, Search, Star, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Play, Search, Star, Users } from "lucide-react";
+import { FeaturedCourses } from "@/components/FeaturedCourses";
 
-const courses = [
-  {
-    id: 1,
-    title: "The Complete Web Developer",
-    instructor: "John Smith",
-    image:
-      "https://images.unsplash.com/photo-1633356122544-f134324ef6db?w=800&h=500&fit=crop",
-    rating: 4.8,
-    reviews: 2500,
-    students: 12000,
-    price: 99.99,
-    level: "Beginner",
-  },
-  {
-    id: 2,
-    title: "React - Advanced Patterns",
-    instructor: "Sarah Johnson",
-    image:
-      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=500&fit=crop",
-    rating: 4.9,
-    reviews: 1800,
-    students: 8500,
-    price: 89.99,
-    level: "Advanced",
-  },
-  {
-    id: 3,
-    title: "JavaScript Masterclass",
-    instructor: "Mike Brown",
-    image:
-      "https://images.unsplash.com/photo-1516534775068-bb57e39c8ac4?w=800&h=500&fit=crop",
-    rating: 4.7,
-    reviews: 3200,
-    students: 15000,
-    price: 79.99,
-    level: "Intermediate",
-  },
-  {
-    id: 4,
-    title: "Python for Data Science",
-    instructor: "Emma Davis",
-    image:
-      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&h=500&fit=crop",
-    rating: 4.8,
-    reviews: 2100,
-    students: 9800,
-    price: 84.99,
-    level: "Beginner",
-  },
-];
+type Course = {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  level: string;
+  kindOfCourse: string;
+  totalLessons: number;
+  progress: number;
+  status: string;
+};
 
-const categories = [
-  { name: "Web Development", count: 1200 },
-  { name: "Mobile Development", count: 800 },
-  { name: "Data Science", count: 950 },
-  { name: "Machine Learning", count: 680 },
-  { name: "UI/UX Design", count: 450 },
-  { name: "Digital Marketing", count: 620 },
-];
+export default async function Home({
+  searchParams,
+}: {
+  // Next.js App Router (server) passes searchParams as a Promise.
+  searchParams?: Promise<{ page?: string | string[] }>;
+}) {
+  const API_BASE = process.env.API_URL ?? "http://localhost:5000";
 
-export default function Home() {
+  let courses: Course[] = [];
+  let loadError: string | null = null;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/courses`, { cache: "no-store" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    courses = (await res.json()) as Course[];
+  } catch {
+    loadError = "Không tải được danh sách khóa học từ server.";
+  }
+
+  const pageSize = 9;
+  const sp = await searchParams;
+  const rawPage =
+    typeof sp?.page === "string"
+      ? sp.page
+      : Array.isArray(sp?.page)
+        ? sp.page[0]
+        : undefined;
+  const page = Math.max(1, Number(rawPage ?? 1) || 1);
+  const totalPages = Math.max(1, Math.ceil(courses.length / pageSize));
+  const pagedCourses = courses.slice((page - 1) * pageSize, page * pageSize);
+
+  const categories = Object.entries(
+    courses.reduce<Record<string, number>>((acc, c) => {
+      acc[c.kindOfCourse] = (acc[c.kindOfCourse] ?? 0) + 1;
+      return acc;
+    }, {}),
+  ).map(([name, count]) => ({ name, count }));
+
   return (
     <div className="flex min-h-full flex-1 flex-col bg-background">
       <AppHeader />
@@ -117,7 +107,8 @@ export default function Home() {
         <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
           <h2 className="mb-5 text-xl font-semibold sm:text-2xl">Top categories</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {categories.map((category) => (
+            {categories.length ? (
+              categories.map((category) => (
               <Card
                 key={category.name}
                 className="cursor-pointer p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
@@ -127,7 +118,12 @@ export default function Home() {
                   {category.count} courses
                 </p>
               </Card>
-            ))}
+              ))
+            ) : (
+              <div className="col-span-full text-sm text-zinc-500 dark:text-zinc-400">
+                {loadError ?? "Không có dữ liệu."}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -143,44 +139,51 @@ export default function Home() {
               View all <ChevronRight className="ml-1 h-4 w-4" />
             </Link>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {courses.map((course) => (
-              <Card key={course.id} className="overflow-hidden">
-                <div className="relative h-40">
-                  <img
-                    src={course.image}
-                    alt={course.title}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <CardHeader>
-                  <div className="mb-2 flex items-center justify-between">
-                    <Badge>{course.level}</Badge>
-                    <span className="text-sm font-semibold">${course.price}</span>
-                  </div>
-                  <CardTitle className="line-clamp-2">{course.title}</CardTitle>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                    {course.instructor}
-                  </p>
-                </CardHeader>
-                <CardContent className="pt-2">
-                  <div className="mb-3 flex items-center gap-2 text-xs">
-                    <span className="inline-flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      {course.rating}
-                    </span>
-                    <span className="text-zinc-500 dark:text-zinc-400">
-                      ({course.reviews.toLocaleString()} reviews)
-                    </span>
-                  </div>
-                  <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-400">
-                    {course.students.toLocaleString()} students
-                  </p>
-                  <Button className="w-full">Enroll now</Button>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <FeaturedCourses
+              courses={pagedCourses}
+              apiBase={API_BASE}
+              loadError={loadError}
+            />
           </div>
+
+          {totalPages > 1 && (
+            <div className="mt-6 flex items-center justify-center gap-3">
+              {page > 1 ? (
+                <Link
+                  href={`/?page=${page - 1}`}
+                  className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-600">
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </span>
+              )}
+
+              <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                Page {page} / {totalPages}
+              </span>
+
+              {page < totalPages ? (
+                <Link
+                  href={`/?page=${page + 1}`}
+                  className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-600">
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </section>
     </div>

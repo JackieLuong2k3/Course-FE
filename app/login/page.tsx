@@ -1,24 +1,23 @@
 import { Suspense } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { LoginForm } from "@/components/LoginForm";
-
-function LoginFallback() {
-  return (
-    <div className="flex min-h-[12rem] w-full max-w-sm items-center justify-center rounded-2xl border border-dashed border-zinc-200 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
-      Đang tải form…
-    </div>
-  );
-}
+import { Card } from "@/components/ui/card";
+import { LoginForm } from "./login-form";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className="flex min-h-full flex-1 flex-col bg-background">
       <AppHeader />
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:px-6">
-        <Suspense fallback={<LoginFallback />}>
+      <div className="flex flex-1 items-center justify-center px-4 py-12 sm:px-6">
+        <Suspense
+          fallback={
+            <Card className="mx-auto w-full max-w-md p-8 text-center text-sm text-zinc-500">
+              Đang tải…
+            </Card>
+          }
+        >
           <LoginForm />
         </Suspense>
-      </main>
+      </div>
     </div>
   );
 }
