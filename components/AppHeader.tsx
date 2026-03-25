@@ -2,6 +2,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { AUTH_COOKIE, AUTH_USER_NAME_COOKIE } from "@/lib/auth";
 import { LogoutButton } from "@/components/LogoutButton";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type Props = {
   showAuth?: boolean;
@@ -55,16 +56,20 @@ export async function AppHeader({ showAuth = true }: Props) {
                     Xin chào, {displayName}
                   </span>
                 ) : null}
+                <ThemeToggle />
                 <LogoutButton />
               </>
             ) : (
-              <Link
+              <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <Link
                 href="/login"
                 prefetch={false}
                 className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-foreground dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
               >
                 Đăng nhập
               </Link>
+              </div>
             )}
           </nav>
         )}

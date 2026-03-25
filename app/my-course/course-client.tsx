@@ -60,9 +60,41 @@ export function MyCourseCourseClient() {
     "all" | "not-started" | "in-progress" | "completed"
   >("all");
   const [lessonPage, setLessonPage] = useState(1);
+  const [lessonTimes, setLessonTimes] = useState<Record<string, number>>({});
 
   const apiBase =
     process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? defaultApiBase;
+
+  useEffect(() => {
+    const times: Record<string, number> = {};
+    const token = localStorage.getItem(AUTH_STORAGE_TOKEN);
+
+    if (course?.lessons) {
+      course.lessons.forEach((l) => {
+        const lid = l.id ?? l._id;
+        if (lid) {
+          const val = localStorage.getItem(`lesson_time_${lid}`);
+          const watched = val ? parseInt(val, 10) : 0;
+          times[lid] = watched;
+
+          const duration = l.duration ?? 0;
+          if (watched >= duration && duration > 0 && l.lessonProgress?.status !== "completed") {
+            if (token && courseId) {
+              fetch(`${apiBase}/api/courses/${courseId}/lessons/${lid}/status`, {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ status: "completed" }),
+              }).catch(() => { });
+            }
+          }
+        }
+      });
+    }
+    setLessonTimes(times);
+  }, [course, courseId, apiBase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -160,6 +192,39 @@ export function MyCourseCourseClient() {
     const start = (safeLessonPage - 1) * LESSONS_PAGE_SIZE;
     return filteredLessons.slice(start, start + LESSONS_PAGE_SIZE);
   }, [filteredLessons, safeLessonPage]);
+
+  const handleOpenLesson = async (lesson: Lesson) => {
+    if (!courseId) return;
+    const lessonIdResolved = lesson._id ?? lesson.id;
+    const token = localStorage.getItem(AUTH_STORAGE_TOKEN);
+    if (token) {
+      if (lesson.lessonProgress?.status !== "completed") {
+        const watched = lessonTimes[lessonIdResolved] ?? 0;
+        const duration = lesson.duration ?? 0;
+        const isCompleted = watched >= duration && duration > 0;
+
+        fetch(`${apiBase}/api/courses/${courseId}/lessons/${lessonIdResolved}/status`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: isCompleted ? "completed" : "in-progress" }),
+        }).catch(() => { });
+      }
+      if (computedCourse?.status !== "completed") {
+        fetch(`${apiBase}/api/courses/${courseId}/status`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: "in-progress" }),
+        }).catch(() => { });
+      }
+    }
+    router.push(`/my-course/${courseId}/lesson/${lessonIdResolved}`);
+  };
 
   if (!courseId) {
     return <div className="text-sm text-zinc-500 dark:text-zinc-400">Thiếu course id.</div>;
@@ -273,21 +338,7 @@ export function MyCourseCourseClient() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            const lessonIdResolved = lesson._id ?? lesson.id;
-                            const token = localStorage.getItem(AUTH_STORAGE_TOKEN);
-                            if (token && lesson.lessonProgress?.status !== "completed") {
-                              fetch(`${apiBase}/api/courses/${courseId}/lessons/${lessonIdResolved}/status`, {
-                                method: "PUT",
-                                headers: {
-                                  "Content-Type": "application/json",
-                                  Authorization: `Bearer ${token}`,
-                                },
-                                body: JSON.stringify({ status: "in-progress" }),
-                              }).catch(() => { });
-                            }
-                            router.push(`/my-course/${courseId}/lesson/${lessonIdResolved}`);
-                          }}
+                          onClick={() => handleOpenLesson(lesson)}
                         >
                           Mở bài
                         </Button>

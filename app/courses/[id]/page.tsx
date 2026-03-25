@@ -67,7 +67,7 @@ export default async function CourseDetailPage({
               <div className="space-y-3 p-4 sm:p-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge>{course.kindOfCourse}</Badge>
-                  <Badge variant="outline">{course.level}</Badge>
+                  <Badge variant="outline">Level: {course.level}</Badge>
                   <Badge variant="outline">{course.totalLessons} lessons</Badge>
                 </div>
                 <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">

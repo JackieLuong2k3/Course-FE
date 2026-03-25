@@ -84,7 +84,7 @@ export function SidebarLesson() {
           {course?.lessons?.length ?? 0} lessons
         </div>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="p-4 text-sm text-zinc-500">Loading lessons...</div>
@@ -100,9 +100,8 @@ export function SidebarLesson() {
                 <Link
                   key={lessonIdRaw ?? index}
                   href={`/my-course/${courseId}/lesson/${lessonIdRaw}`}
-                  className={`group flex items-start gap-3 p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors ${
-                    isActive ? "bg-muted font-medium border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
-                  }`}
+                  className={`group flex items-start gap-3 p-4 border-b last:border-b-0 hover:bg-muted/50 transition-colors ${isActive ? "bg-muted font-medium border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
+                    }`}
                 >
                   <div className="mt-0.5 flex-shrink-0">
                     {isCompleted ? (
@@ -111,14 +110,14 @@ export function SidebarLesson() {
                       <PlayCircle className={`w-5 h-5 ${isActive ? "text-primary" : "text-zinc-400 group-hover:text-primary/70"}`} />
                     )}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className={`text-sm leading-tight mb-1 ${isActive ? "text-foreground" : "text-zinc-600 dark:text-zinc-300"}`}>
                       {lesson.order ? `${lesson.order}. ` : ""}
                       {lesson.title ?? "Untitled lesson"}
                     </div>
                     {lesson.duration ? (
-                      <div className="text-xs text-zinc-500">{lesson.duration} mins</div>
+                      <div className="text-xs text-zinc-500">{lesson.duration} seconds</div>
                     ) : null}
                   </div>
                 </Link>

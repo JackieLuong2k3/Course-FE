@@ -27,6 +27,7 @@ type Course = {
   kindOfCourse: string;
   totalLessons: number;
   lessons?: Lesson[];
+  enrollmentStatus?: string;
 };
 
 
@@ -57,7 +58,6 @@ export function MyCourseClient() {
         const res = await fetch(`${apiBase}/api/courses/enrolled`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
         if (cancelled) return;
         if (!res.ok) {
           if (res.status === 401) {
@@ -71,6 +71,7 @@ export function MyCourseClient() {
 
         const data = (await res.json()) as { courses?: Course[] };
         setCourses(data.courses ?? []);
+        console.log(data.courses);
       } catch {
         if (cancelled) return;
         setError("Không kết nối được API. Hãy kiểm tra backend.");
@@ -108,6 +109,42 @@ export function MyCourseClient() {
       };
     });
   }, [courses]);
+
+  const handleContinueLesson = (e: React.MouseEvent, course: Course) => {
+    e.stopPropagation();
+
+    if (!course.lessons || course.lessons.length === 0) {
+      router.push(`/my-course/${course.id}`);
+      return;
+    }
+
+    // 1. Tìm ưu tiên lesson đang in-progress
+    for (let i = 0; i < course.lessons.length; i++) {
+      const lesson = course.lessons[i];
+      console.log(lesson);
+      if (lesson.status === "in-progress" && lesson.id) {
+        router.push(`/my-course/${course.id}/lesson/${lesson.id}`);
+        return;
+      }
+    }
+
+    // 2. Không có in-progress thì tìm not-started
+    for (let i = 0; i < course.lessons.length; i++) {
+      const lesson = course.lessons[i];
+      if (lesson.status === "not-started" && lesson.id) {
+        router.push(`/my-course/${course.id}/lesson/${lesson.id}`);
+        return;
+      }
+    }
+
+    // 3. Nếu complete hết thì học đại bài đầu tiên
+    const firstLessonId = course.lessons[0].id;
+    if (firstLessonId) {
+      router.push(`/my-course/${course.id}/lesson/${firstLessonId}`);
+    } else {
+      router.push(`/my-course/${course.id}`);
+    }
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 lg:px-8">
@@ -161,7 +198,7 @@ export function MyCourseClient() {
                 <div className="mb-2 flex items-center justify-between gap-4">
                   <div className="flex items-center gap-2">
                     <Badge>{course.kindOfCourse}</Badge>
-                    <Badge variant="secondary">{course.level}</Badge>
+                    <Badge variant="secondary">Level: {course.level}</Badge>
                   </div>
                   <Badge variant="outline">{course.totalLessons} lessons</Badge>
                 </div>
@@ -169,17 +206,19 @@ export function MyCourseClient() {
                 <CardTitle className="line-clamp-2">{course.title}</CardTitle>
               </CardHeader>
 
-              <CardContent className="pt-0">
-                <Button
-                  className="w-full"
-                  variant={course.progress > 0 ? "default" : "secondary"}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/my-course/${course.id}`);
-                  }}
-                >
-                  {course.progress > 0 ? "Continue" : "Learn now"}
-                </Button>
+              <CardContent className="pt-0 flex justify-center">
+                {course.enrollmentStatus === "in-progress" ? (
+                  <Badge
+                    className="bg-yellow-500 text-white hover:bg-yellow-600 px-6 py-1 text-sm"
+                    onClick={(e) => handleContinueLesson(e, course)}
+                  >
+                    Continue
+                  </Badge>
+                ) : (
+                  <Badge className="bg-blue-500 text-white hover:bg-blue-600 px-6 py-1 text-sm">
+                    Learn now
+                  </Badge>
+                )}
               </CardContent>
             </Card>
           ))}

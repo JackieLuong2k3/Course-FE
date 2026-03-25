@@ -88,6 +88,14 @@ export function CoursesPage({
     return (courseId: string) => enrolledIds.has(String(courseId));
   }, [enrolledIds]);
 
+  const handlePush = (courseId: string) => {
+    if (isEnrolled(courseId)) {
+      router.push(`/my-course/${courseId}`);
+    } else {
+      router.push(`/courses/${courseId}`);
+    }
+  };
+
   const handleEnroll = async (courseId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const token = localStorage.getItem(AUTH_STORAGE_TOKEN);
@@ -188,7 +196,7 @@ export function CoursesPage({
               <Card
                 key={course.id}
                 className="cursor-pointer overflow-hidden transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
-                onClick={() => router.push(`/courses/${course.id}`)}
+                onClick={() => handlePush(course.id)}
               >
                 <div
                   className="relative w-full overflow-hidden"
@@ -212,7 +220,7 @@ export function CoursesPage({
                   </div>
                   <CardTitle className="line-clamp-2">{course.title}</CardTitle>
                   <div className="mt-2 flex items-center gap-2">
-                    <Badge variant="outline">{String(course.level)}</Badge>
+                    <Badge variant="outline">Level: {String(course.level)}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-2">
