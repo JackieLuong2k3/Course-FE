@@ -70,10 +70,9 @@ export function MyCourseCourseClient() {
       }
 
       try {
-        const res = await fetch(`${apiBase}/api/courses/enrolled`, {
+        const res = await fetch(`${apiBase}/api/courses/${courseId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
         if (!res.ok) {
           const data = await res.json().catch(() => null);
           if (res.status === 401) {
@@ -84,12 +83,14 @@ export function MyCourseCourseClient() {
           return;
         }
 
-        const data = (await res.json()) as { courses?: Course[] };
-        const found = (data.courses ?? []).find((c) => c.id === courseId);
+        const found = (await res.json()) as any;
         if (!found) {
-          setError("Không tìm thấy khóa học này trong danh sách của bạn.");
+          setError("Không tìm thấy khóa học này.");
           return;
         }
+
+        // Map _id to id if backend uses _id
+        if (found._id && !found.id) found.id = found._id;
 
         if (!cancelled) setCourse(found);
       } catch {
@@ -163,26 +164,6 @@ export function MyCourseCourseClient() {
                       {lesson.title ?? "Untitled"}
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Badge variant={statusToBadgeVariant(lesson.status)}>
-                        {lesson.status ?? "not-started"}
-                      </Badge>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {lesson.progress ?? 0}%
-                      </span>
-                    </div>
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        router.push(`/my-course/${courseId}/lesson/${lesson.id}`);
-                      }}
-                    >
-                      Mở bài
-                    </Button>
-                  </CardContent>
                 </Card>
               ))}
             </div>

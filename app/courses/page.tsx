@@ -1,6 +1,8 @@
+// course page
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { AUTH_STORAGE_TOKEN } from "@/lib/auth";
+import { toast } from "sonner";
 
 type Course = {
   id: string;
@@ -31,11 +34,12 @@ type Props = {
 const LEVELS = ["All", "S", "Pres", "TC", "MTC"] as const;
 type LevelFilter = (typeof LEVELS)[number];
 
-export function FeaturedCourses({
+export function CoursesPage({
   courses,
   apiBase,
   loadError,
 }: Props) {
+  const router = useRouter();
   const [enrolledIds, setEnrolledIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -83,6 +87,43 @@ export function FeaturedCourses({
   const isEnrolled = useMemo(() => {
     return (courseId: string) => enrolledIds.has(String(courseId));
   }, [enrolledIds]);
+
+  const handleEnroll = async (courseId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const token = localStorage.getItem(AUTH_STORAGE_TOKEN);
+    if (!token) {
+      alert("Bạn cần đăng nhập để đăng ký khóa học.");
+      router.push("/login");
+      return;
+    }
+
+    try {
+      setLoadingEnrolled(true);
+      const res = await fetch(`${apiBase}/api/users/enroll/${courseId}`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        toast.error(err?.message || "Lỗi khi đăng ký khóa học.");
+        return;
+      }
+
+      setEnrolledIds((prev) => {
+        const next = new Set(prev);
+        next.add(String(courseId));
+        return next;
+      });
+      toast.success("Đăng ký thành công! Khóa học đã được thêm vào danh sách của bạn.");
+    } catch (err: any) {
+      toast.error("Không kết nối được server. Vui lòng thử lại.");
+    } finally {
+      setLoadingEnrolled(false);
+    }
+  };
 
   const filteredCourses = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -141,42 +182,53 @@ export function FeaturedCourses({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredCourses.map((course) => {
-        const enrolled = isEnrolled(course.id);
+            const enrolled = isEnrolled(course.id);
 
-        return (
-          <Card key={course.id} className="overflow-hidden">
-            <div className="relative w-full overflow-hidden" style={{ paddingTop: "56.25%" }}>
-              <img
-                src={course.thumbnail}
-                alt={course.title}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </div>
-            <CardHeader>
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Badge>{course.kindOfCourse}</Badge>
-                  {enrolled ? <Badge variant="secondary">Enrolled</Badge> : null}
+            return (
+              <Card
+                key={course.id}
+                className="cursor-pointer overflow-hidden transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                onClick={() => router.push(`/courses/${course.id}`)}
+              >
+                <div
+                  className="relative w-full overflow-hidden"
+                  style={{ paddingTop: "56.25%" }}
+                >
+                  <img
+                    src={course.thumbnail}
+                    alt={course.title}
+                    className="absolute inset-0 h-full w-full object-contain"
+                  />
                 </div>
-                <span className="text-sm font-semibold">
-                  {course.totalLessons} lessons
-                </span>
-              </div>
-              <CardTitle className="line-clamp-2">{course.title}</CardTitle>
-              <div className="mt-2 flex items-center gap-2">
-                <Badge variant="outline">{String(course.level)}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-2">
-              <p className="mb-3 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">
-                {course.description}
-              </p>
-              <Button className="w-full" disabled={enrolled || loadingEnrolled}>
-                {enrolled ? "Enrolled" : "Enroll now"}
-              </Button>
-            </CardContent>
-          </Card>
-        );
+                <CardHeader>
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge>{course.kindOfCourse}</Badge>
+                      {enrolled ? <Badge variant="secondary">Enrolled</Badge> : null}
+                    </div>
+                    <span className="text-sm font-semibold">
+                      {course.totalLessons} lessons
+                    </span>
+                  </div>
+                  <CardTitle className="line-clamp-2">{course.title}</CardTitle>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Badge variant="outline">{String(course.level)}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-2">
+                  <p className="mb-3 line-clamp-2 text-xs text-zinc-500 dark:text-zinc-400">
+                    {course.description}
+                  </p>
+                  <Button
+                    className="w-full"
+                    disabled={enrolled || loadingEnrolled}
+                    onClick={(e) => handleEnroll(course.id, e)}
+                  >
+                    {enrolled ? "Enrolled" : "Enroll now"}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
           })}
         </div>
       )}

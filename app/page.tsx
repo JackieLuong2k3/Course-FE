@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ChevronLeft, ChevronRight, Play, Search, Star, Users } from "lucide-react";
 import { FeaturedCourses } from "@/components/FeaturedCourses";
+import { CoursesPage } from "./courses/page";
+import Image from "next/image";
 
 type Course = {
   id: string;
@@ -79,25 +81,9 @@ export default async function Home({
                 Search
               </Button>
             </div>
-            <div className="flex items-center gap-6 text-sm text-zinc-600 dark:text-zinc-400">
-              <span className="inline-flex items-center gap-1.5">
-                <Users className="h-4 w-4" />
-                50M+ students
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                4.7 avg rating
-              </span>
-            </div>
           </div>
           <Card className="hidden items-center justify-center lg:flex">
             <CardContent className="flex w-full flex-col items-center gap-3 py-10">
-              <div className="inline-flex h-24 w-24 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900">
-                <Play className="h-10 w-10" />
-              </div>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Start learning today
-              </p>
             </CardContent>
           </Card>
         </div>
@@ -109,15 +95,15 @@ export default async function Home({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {categories.length ? (
               categories.map((category) => (
-              <Card
-                key={category.name}
-                className="cursor-pointer p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
-              >
-                <CardTitle className="text-sm">{category.name}</CardTitle>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                  {category.count} courses
-                </p>
-              </Card>
+                <Card
+                  key={category.name}
+                  className="cursor-pointer p-4 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
+                >
+                  <CardTitle className="text-sm">{category.name}</CardTitle>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    {category.count} courses
+                  </p>
+                </Card>
               ))
             ) : (
               <div className="col-span-full text-sm text-zinc-500 dark:text-zinc-400">
@@ -132,19 +118,9 @@ export default async function Home({
         <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
           <div className="mb-5 flex items-center justify-between">
             <h2 className="text-xl font-semibold sm:text-2xl">Featured courses</h2>
-            <Link
-              href="#"
-              className="inline-flex items-center text-sm text-zinc-600 hover:text-foreground dark:text-zinc-400 dark:hover:text-zinc-100"
-            >
-              View all <ChevronRight className="ml-1 h-4 w-4" />
-            </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <FeaturedCourses
-              courses={pagedCourses}
-              apiBase={API_BASE}
-              loadError={loadError}
-            />
+            <CoursesPage courses={pagedCourses} apiBase={API_BASE} loadError={loadError ?? null} />
           </div>
 
           {totalPages > 1 && (

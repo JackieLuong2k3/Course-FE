@@ -5,16 +5,21 @@ import { useParams, useRouter } from "next/navigation";
 import { AUTH_STORAGE_TOKEN } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 
 const defaultApiBase = "http://localhost:5000";
 
 type Lesson = {
   id: string;
+  _id?: string;
   title?: string;
   order?: number;
+  duration?: number;
   status?: "not-started" | "in-progress" | "completed";
   progress?: number;
+  lessonProgress?: {
+    status?: "not-started" | "in-progress" | "completed";
+  }
 };
 
 type Course = {
@@ -28,13 +33,14 @@ type Course = {
   lessons?: Lesson[];
 };
 
-function statusToBadgeVariant(
-  status?: Lesson["status"],
-): "outline" | "secondary" | "default" {
-  if (!status) return "outline";
-  if (status === "completed") return "secondary";
-  if (status === "in-progress") return "default";
-  return "outline";
+function statusClass(status?: Lesson["status"]): string {
+  if (status === "completed") {
+    return "inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700";
+  }
+  if (status === "in-progress") {
+    return "inline-flex items-center gap-1 rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-700";
+  }
+  return "inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700";
 }
 
 function toParamsId(idParam: string | string[] | undefined) {
@@ -50,6 +56,10 @@ export function MyCourseCourseClient() {
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lessonStatusFilter, setLessonStatusFilter] = useState<
+    "all" | "not-started" | "in-progress" | "completed"
+  >("all");
+  const [lessonPage, setLessonPage] = useState(1);
 
   const apiBase =
     process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? defaultApiBase;
@@ -70,12 +80,13 @@ export function MyCourseCourseClient() {
       }
 
       try {
-        const res = await fetch(`${apiBase}/api/courses/enrolled`, {
+        const res = await fetch(`${apiBase}/api/courses/${courseId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (!res.ok) {
           const data = await res.json().catch(() => null);
+          console.log(data);
           if (res.status === 401) {
             router.replace("/login");
             return;
@@ -84,12 +95,16 @@ export function MyCourseCourseClient() {
           return;
         }
 
-        const data = (await res.json()) as { courses?: Course[] };
-        const found = (data.courses ?? []).find((c) => c.id === courseId);
+        const found = (await res.json()) as any;
+        console.log("Data khoá học lấy về:", found);
+
         if (!found) {
-          setError("Không tìm thấy khóa học này trong danh sách của bạn.");
+          setError("Không tìm thấy khóa học này.");
           return;
         }
+
+        // Map _id to id if backend uses _id
+        if (found._id && !found.id) found.id = found._id;
 
         if (!cancelled) setCourse(found);
       } catch {
@@ -111,11 +126,11 @@ export function MyCourseCourseClient() {
     const avg =
       lessons.length > 0
         ? Math.round(
-            lessons.reduce(
-              (sum, l) => sum + (l.progress ?? 0),
-              0,
-            ) / lessons.length,
-          )
+          lessons.reduce(
+            (sum, l) => sum + (l.progress ?? 0),
+            0,
+          ) / lessons.length,
+        )
         : 0;
 
     return {
@@ -125,6 +140,26 @@ export function MyCourseCourseClient() {
         avg >= 100 ? "completed" : avg > 0 ? "in-progress" : "not-started",
     } as const;
   }, [course]);
+
+  const filteredLessons = useMemo(() => {
+    const lessons = computedCourse?.lessons ?? [];
+    if (lessonStatusFilter === "all") return lessons;
+    return lessons.filter(
+      (lesson) => (lesson.status ?? "not-started") === lessonStatusFilter,
+    );
+  }, [computedCourse?.lessons, lessonStatusFilter]);
+
+  const LESSONS_PAGE_SIZE = 6;
+  const totalLessonPages = Math.max(
+    1,
+    Math.ceil(filteredLessons.length / LESSONS_PAGE_SIZE),
+  );
+  const safeLessonPage = Math.min(lessonPage, totalLessonPages);
+
+  const pagedLessons = useMemo(() => {
+    const start = (safeLessonPage - 1) * LESSONS_PAGE_SIZE;
+    return filteredLessons.slice(start, start + LESSONS_PAGE_SIZE);
+  }, [filteredLessons, safeLessonPage]);
 
   if (!courseId) {
     return <div className="text-sm text-zinc-500 dark:text-zinc-400">Thiếu course id.</div>;
@@ -144,7 +179,7 @@ export function MyCourseCourseClient() {
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <Badge>{computedCourse.kindOfCourse}</Badge>
-                <Badge variant="secondary">{computedCourse.level}</Badge>
+                <Badge variant="destructive">Level {computedCourse.level}</Badge>
               </div>
               <h1 className="mt-3 text-2xl font-semibold tracking-tight">
                 {computedCourse.title}
@@ -153,49 +188,143 @@ export function MyCourseCourseClient() {
                 {computedCourse.description}
               </p>
             </div>
-            <div className="min-w-48 rounded-lg border bg-background/50 p-4">
-              <div className="text-sm text-zinc-600 dark:text-zinc-300">Progress</div>
-              <div className="mt-1 text-2xl font-semibold">{computedCourse.progress}%</div>
-              <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
-                {computedCourse.status}
-              </div>
-            </div>
+
           </div>
 
           <div className="space-y-3">
-            <div className="text-sm font-medium">Lessons</div>
-            <div className="grid gap-3 md:grid-cols-2">
-              {(computedCourse.lessons ?? []).map((lesson) => (
-                <Card key={lesson.id} className="overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base line-clamp-2">
-                      {lesson.order ? `${lesson.order}. ` : ""}
-                      {lesson.title ?? "Untitled"}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Badge variant={statusToBadgeVariant(lesson.status)}>
-                        {lesson.status ?? "not-started"}
-                      </Badge>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {lesson.progress ?? 0}%
-                      </span>
-                    </div>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-medium">Lessons1</div>
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="lesson-status-filter"
+                  className="text-sm font-medium text-zinc-600 dark:text-zinc-400"
+                >
+                  Status
+                </label>
+                <select
+                  id="lesson-status-filter"
+                  value={lessonStatusFilter}
+                  onChange={(e) => {
+                    setLessonStatusFilter(
+                      e.target.value as
+                      | "all"
+                      | "not-started"
+                      | "in-progress"
+                      | "completed",
+                    );
+                    setLessonPage(1);
+                  }}
+                  className="h-8 rounded-lg border border-input bg-background px-2.5 text-sm text-foreground shadow-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 dark:bg-input/30"
+                >
+                  <option value="all">all</option>
+                  <option value="not-started">not-started</option>
+                  <option value="in-progress">in-progress</option>
+                  <option value="completed">completed</option>
+                </select>
+              </div>
+            </div>
+
+            {filteredLessons.length === 0 ? (
+              <div className="rounded-lg border bg-background p-4 text-sm text-zinc-500 dark:text-zinc-400">
+                No lessons found
+              </div>
+            ) : (
+              <>
+                <div className="overflow-hidden rounded-lg border">
+                  <div className="grid grid-cols-[72px_220px_240px_110px_120px_100px] gap-3 border-b bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+                    <span>NO.</span>
+                    <span>Lesson</span>
+                    <span>Thumb</span>
+                    <span>Duration</span>
+                    <span>Status</span>
+                    <span>Action</span>
+                  </div>
+                  {pagedLessons.map((lesson, index) => {
+                    const thumb = computedCourse.thumbnail;
+                    return (
+
+                      <div
+                        key={lesson._id ?? lesson.id ?? `${index}`}
+                        className="grid grid-cols-[72px_220px_240px_110px_120px_100px] items-center gap-3 border-b px-3 py-2 last:border-b-0"
+                      >
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {lesson.order ?? index + 1}
+                        </div>
+                        <div className="min-w-0 truncate text-sm font-medium">
+                          {lesson.title ?? "Untitled lesson"}
+                        </div>
+                        <div className="h-16 w-full overflow-hidden rounded-md">
+                          <img
+                            src={thumb}
+                            alt={lesson.title ?? "Lesson"}
+                            className="h-full object-contain"
+                          />
+                        </div>
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                          {lesson.duration ?? 0} seconds
+                        </div>
+                        <div>
+                          <span className={statusClass(lesson.lessonProgress?.status)}>
+                            {lesson.lessonProgress?.status ?? "not-started"}
+                          </span>
+                        </div>
+                        {/* call api`${apiBase}/api/courses/${courseId}/lessons/${lessonIdResolved}/status`, */}
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const lessonIdResolved = lesson._id ?? lesson.id;
+                            const token = localStorage.getItem(AUTH_STORAGE_TOKEN);
+                            if (token && lesson.lessonProgress?.status !== "completed") {
+                              fetch(`${apiBase}/api/courses/${courseId}/lessons/${lessonIdResolved}/status`, {
+                                method: "PUT",
+                                headers: {
+                                  "Content-Type": "application/json",
+                                  Authorization: `Bearer ${token}`,
+                                },
+                                body: JSON.stringify({ status: "in-progress" }),
+                              }).catch(() => { });
+                            }
+                            router.push(`/my-course/${courseId}/lesson/${lessonIdResolved}`);
+                          }}
+                        >
+                          Mở bài
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Page {safeLessonPage}/{totalLessonPages} - {filteredLessons.length} lessons
+                  </p>
+                  <div className="flex items-center gap-2">
                     <Button
-                      className="w-full"
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        router.push(`/my-course/${courseId}/lesson/${lesson.id}`);
-                      }}
+                      disabled={safeLessonPage <= 1}
+                      onClick={() =>
+                        setLessonPage((p) => Math.max(1, p - 1))
+                      }
                     >
-                      Mở bài
+                      Previous
                     </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={safeLessonPage >= totalLessonPages}
+                      onClick={() =>
+                        setLessonPage((p) => Math.min(totalLessonPages, p + 1))
+                      }
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

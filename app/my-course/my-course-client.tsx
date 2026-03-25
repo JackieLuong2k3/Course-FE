@@ -15,7 +15,7 @@ type Lesson = {
   title?: string;
   order?: number;
   status?: "not-started" | "in-progress" | "completed";
-  progress?: number;
+  progress?: number;// seconds
 };
 
 type Course = {
@@ -29,14 +29,6 @@ type Course = {
   lessons?: Lesson[];
 };
 
-function statusToBadgeVariant(
-  status?: Lesson["status"],
-): "outline" | "secondary" | "default" {
-  if (!status) return "outline";
-  if (status === "completed") return "secondary";
-  if (status === "in-progress") return "default";
-  return "outline";
-}
 
 export function MyCourseClient() {
   const router = useRouter();
@@ -99,9 +91,9 @@ export function MyCourseClient() {
       const lessonProgress =
         lessons.length > 0
           ? Math.round(
-              lessons.reduce((sum, l) => sum + (l.progress ?? 0), 0) /
-                lessons.length,
-            )
+            lessons.reduce((sum, l) => sum + (l.progress ?? 0), 0) /
+            lessons.length,
+          )
           : 0;
 
       return {
@@ -150,12 +142,18 @@ export function MyCourseClient() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {computedCourses.map((course) => (
-            <Card key={course.id} className="overflow-hidden">
+            <Card
+              key={course.id}
+              className="cursor-pointer overflow-hidden transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-900"
+              onClick={() => {
+                router.push(`/my-course/${course.id}`);
+              }}
+            >
               <div className="relative h-40">
                 <img
                   src={course.thumbnail}
                   alt={course.title}
-                  className="h-full w-full object-cover"
+                  className="absolute inset-0 h-full w-full object-contain"
                 />
               </div>
 
@@ -171,33 +169,17 @@ export function MyCourseClient() {
                 <CardTitle className="line-clamp-2">{course.title}</CardTitle>
               </CardHeader>
 
-              <CardContent className="space-y-4 pt-2">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-zinc-600 dark:text-zinc-300">
-                    Progress
-                  </div>
-                  <div className="text-sm font-semibold">{course.progress}%</div>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium">Lessons</div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!course.lessons || course.lessons.length === 0}
-                      onClick={() => {
-                        const firstLesson = course.lessons?.[0];
-                        if (!firstLesson?.id) return;
-                        router.push(
-                          `/my-course/${course.id}`,
-                        );
-                      }}
-                    >
-                      Xem chi tiết
-                    </Button>
-                  </div>
-                </div>
+              <CardContent className="pt-0">
+                <Button
+                  className="w-full"
+                  variant={course.progress > 0 ? "default" : "secondary"}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    router.push(`/my-course/${course.id}`);
+                  }}
+                >
+                  {course.progress > 0 ? "Continue" : "Learn now"}
+                </Button>
               </CardContent>
             </Card>
           ))}
